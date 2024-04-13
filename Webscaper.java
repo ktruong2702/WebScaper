@@ -2,10 +2,7 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -18,26 +15,27 @@ public class MultithreadedWebCrawler {
     private static ExecutorService executorService = Executors.newFixedThreadPool(MAX_THREADS);
 
     public static void main(String[] args) {
-        String startingUrl = "https://www.gsu.edu";
-        crawl(1, startingUrl, new HashSet<>());
+        String startingUrl = "https://www.reddit.com";
+        startCrawling(1, startingUrl, new HashSet<>());
     }
 
-    private static void crawl(int level, String url, Set<String> visitedUrls) {
-        if (level <= MAX_DEPTH && !visitedUrls.contains(url)) {
+    private static void startCrawling(int level, String url, Set<String> visitedLinks) {
+        if (level <= MAX_DEPTH && !visitedLinks.contains(url)) {
             executorService.execute(() -> {
-                if (!url.startsWith("http")){
+                if (!url.startsWith("http")) {
                     return;
                 }
-                Document document = request(url, visitedUrls);
+                Document document = makeRequest(url, visitedLinks);
 
                 if (document != null) {
-                    String nextLink="";
+                    String nextLink = "";
                     for (Element link : document.select("a[href]")) {
                         try {
                             nextLink = link.absUrl("href");
-                        }catch (Exception e){}
+                        } catch (Exception e) {
+                        }
                         if (!nextLink.isEmpty()) {
-                            crawl(level + 1, nextLink, visitedUrls);
+                            startCrawling(level + 1, nextLink, visitedLinks);
                         }
                     }
                 }
@@ -45,21 +43,20 @@ public class MultithreadedWebCrawler {
         }
     }
 
-    private static Document request(String url, Set<String> visitedUrls) {
+    private static Document makeRequest(String url, Set<String> visitedLinks) {
         try {
             Connection connection = Jsoup.connect(url)
-//                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
                     .timeout(5000); // 5 seconds timeout
 
             connection.followRedirects(true); // Follow redirects
 
             Document document = connection.get();
 
-            if (connection.response().statusCode() == 200 && !visitedUrls.contains(url)) {
+            if (connection.response().statusCode() == 200 && !visitedLinks.contains(url)) {
                 System.out.println("Link: " + url);
                 System.out.println(document.title());
 
-                visitedUrls.add(url);
+                visitedLinks.add(url);
 
                 return document;
             }
