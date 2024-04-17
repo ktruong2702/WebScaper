@@ -4,6 +4,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,10 +14,14 @@ public class MultithreadedWebCrawler {
     private static final int MAX_THREADS = 5; // Adjust the number of threads as needed
 
     private static ExecutorService executorService = Executors.newFixedThreadPool(MAX_THREADS);
+    private static int linkCount = 0; // Counter for the number of links processed
 
     public static void main(String[] args) {
-        String startingUrl = "https://www.reddit.com";
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the starting URL: ");
+        String startingUrl = scanner.nextLine();
         startCrawling(1, startingUrl, new HashSet<>());
+        scanner.close();
     }
 
     private static void startCrawling(int level, String url, Set<String> visitedLinks) {
@@ -28,14 +33,17 @@ public class MultithreadedWebCrawler {
                 Document document = makeRequest(url, visitedLinks);
 
                 if (document != null) {
-                    String nextLink = "";
                     for (Element link : document.select("a[href]")) {
                         try {
-                            nextLink = link.absUrl("href");
+                            String nextLink = link.absUrl("href");
+                            if (!nextLink.isEmpty()) {
+                                linkCount++; // Increment link count
+                                System.out.println("Link " + linkCount + ": " + nextLink); // Print link with count
+                                System.out.println("Title: " + document.title()); // Print page title
+                                startCrawling(level + 1, nextLink, visitedLinks);
+                            }
                         } catch (Exception e) {
-                        }
-                        if (!nextLink.isEmpty()) {
-                            startCrawling(level + 1, nextLink, visitedLinks);
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -53,8 +61,8 @@ public class MultithreadedWebCrawler {
             Document document = connection.get();
 
             if (connection.response().statusCode() == 200 && !visitedLinks.contains(url)) {
-                System.out.println("Link: " + url);
-                System.out.println(document.title());
+                System.out.println("Visited Link: " + url);
+                System.out.println("Title: " + document.title()); // Print page title
 
                 visitedLinks.add(url);
 
